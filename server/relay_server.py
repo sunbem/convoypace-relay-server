@@ -285,6 +285,17 @@ class RelayServerApp:
                             await current_room.broadcast()
 
                         current_room = self.get_or_create_room(room_code)
+                        
+                        # Deduplicate: remove any existing session with the same driver name
+                        # This handles reconnects and duplicate joins from the same driver
+                        if not is_viewer:
+                            existing_sessions_to_remove = [
+                                s_id for s_id, s in current_room.sessions.items()
+                                if not s.is_viewer and s.driver_name == driver_name
+                            ]
+                            for s_id in existing_sessions_to_remove:
+                                current_room.remove_session(s_id)
+                        
                         current_session = DriverSession(ws, driver_name=driver_name, is_viewer=is_viewer)
                         current_room.add_session(current_session)
 

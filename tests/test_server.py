@@ -161,6 +161,39 @@ class TestServerLogic(unittest.IsolatedAsyncioTestCase):
             await ws1.close()
             await ws2.close()
 
+    async def test_duplicate_driver_name_deduplicated(self):
+        """A driver reconnecting with the same name must not create duplicate entries."""
+        async with ClientSession() as session:
+            # First connection: Alex joins
+            ws1 = await session.ws_connect(self.ws_url)
+            await ws1.send_str(json.dumps({
+                "type": "join",
+                "room_code": "DEDUP-1",
+                "driver_name": "Alex"
+            }))
+            join1 = json.loads(await ws1.receive_str())
+            self.assertEqual(join1["type"], "joined")
+            await ws1.receive_str()  # initial broadcast
+
+            # Second connection: Alex reconnects (simulating a network blip)
+            ws2 = await session.ws_connect(self.ws_url)
+            await ws2.send_str(json.dumps({
+                "type": "join",
+                "room_code": "DEDUP-1",
+                "driver_name": "Alex"
+            }))
+            join2 = json.loads(await ws2.receive_str())
+            self.assertEqual(join2["type"], "joined")
+            # The reconnect broadcast should contain only ONE Alex entry
+            raw = await ws2.receive_str()
+            data = json.loads(raw)
+            self.assertEqual(data["type"], "leaderboard_update")
+            alex_entries = [d for d in data["drivers"] if d["driver_name"] == "Alex"]
+            self.assertEqual(len(alex_entries), 1, "Duplicate driver profile was created")
+
+            await ws1.close()
+            await ws2.close()
+
 
 if __name__ == "__main__":
     unittest.main()
