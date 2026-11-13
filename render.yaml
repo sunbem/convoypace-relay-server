@@ -2,7 +2,7 @@ services:
   - type: web
     name: convoypace-relay-server
     env: python
-    buildCommand: pip install -r server/requirements.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: python server/relay_server.py
     envVars:
       - key: PORT
