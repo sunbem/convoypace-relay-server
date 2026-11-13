@@ -12,7 +12,6 @@ from aiohttp import web, ClientSession
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from server.relay_server import RelayServerApp, ConvoyRoom, DriverSession
-from client.embedded_server import EmbeddedServerManager
 
 
 class TestServerLogic(unittest.IsolatedAsyncioTestCase):
@@ -161,21 +160,6 @@ class TestServerLogic(unittest.IsolatedAsyncioTestCase):
 
             await ws1.close()
             await ws2.close()
-
-
-    async def test_embedded_server_lifecycle(self):
-        embedded = EmbeddedServerManager(port=8995)
-        try:
-            self.assertTrue(embedded.start())
-            self.assertTrue(embedded.is_running)
-            async with ClientSession() as session:
-                async with session.get(f"http://127.0.0.1:8995/health") as resp:
-                    self.assertEqual(resp.status, 200)
-                    data = await resp.json()
-                    self.assertEqual(data["status"], "ok")
-        finally:
-            embedded.stop()
-            self.assertFalse(embedded.is_running)
 
 
 if __name__ == "__main__":

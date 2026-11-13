@@ -21,7 +21,7 @@ def get_default_config_path() -> Path:
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "driver_name": getpass.getuser() or "Driver",
-    "server_url": "http://localhost:8080",
+    "server_url": "https://convoypace-relay-server.onrender.com",
     "last_room_code": "TRUCK-42",
     "unit": "km",  # "km" or "mi"
     "overlay_x": 40,
@@ -29,7 +29,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "overlay_locked": True,
     "overlay_visible": True,
     "simulation_mode": False,
-    "host_mode": True,
     "ets2_custom_path": ""
 }
 

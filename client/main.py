@@ -19,7 +19,6 @@ from client.network_client import NetworkClient
 from client.overlay_window import OverlayWindow
 from client.control_panel import ControlPanel
 from client.win32_utils import GlobalHotkeyListener
-from client.embedded_server import EmbeddedServerManager
 
 
 class ConvoyPaceApp:
@@ -37,28 +36,27 @@ class ConvoyPaceApp:
         except Exception:
             pass
 
-        # 2. Initialize Embedded Relay Server (Zero-config hosting on PC)
-        self.embedded_server = EmbeddedServerManager(port=8080)
-        if self.config.get("host_mode", True):
-            self.embedded_server.start()
-
-        # 3. Initialize Telemetry Engine
+        # 2. Initialize Telemetry Engine
         sim_mode = bool(self.config.get("simulation_mode", False))
         self.telemetry_reader = TelemetryReader(simulation_mode=sim_mode)
 
-        # 4. Create Tkinter Root Window (Control Panel)
+        # 3. Create Tkinter Root Window (Control Panel)
         self.root = tk.Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        # 5. Create In-Game Overlay Window
+        # 4. Create In-Game Overlay Window
         self.overlay = OverlayWindow(
             config=self.config,
             on_lock_toggled=self._on_overlay_lock_changed,
             on_visibility_toggled=self._on_overlay_vis_changed
         )
 
-        # 6. Initialize Network Client
-        server_url = self.config.get("server_url", "http://localhost:8080")
+        # 5. Initialize Network Client (cloud relay only)
+        # The server_url is read from config.json or CONVOYPACE_SERVER_URL env var.
+        # Local server hosting has been removed; the client always connects to the
+        # cloud relay server (Render) when CONVOYPACE_SERVER_URL is set, or falls back
+        # to the URL stored in config.json.
+        server_url = self.config.get("server_url", "https://convoypace-relay-server.onrender.com")
         room_code = self.config.get("last_room_code", "TRUCK-42")
         driver_name = self.config.get("driver_name", "Driver")
 
@@ -70,19 +68,18 @@ class ConvoyPaceApp:
             on_status_change=self._on_network_status_changed
         )
 
-        # 7. Initialize Control Panel GUI
+        # 6. Initialize Control Panel GUI
         self.control_panel = ControlPanel(
             root=self.root,
             config=self.config,
             on_join_room=self._on_join_room,
-            on_toggle_host_server=self._on_toggle_host_server,
             on_unit_changed=self._on_unit_changed,
             on_simulation_toggled=self._on_simulation_toggled,
             on_toggle_overlay_visibility=self.overlay.toggle_visibility,
             on_toggle_overlay_lock=self.overlay.toggle_lock
         )
 
-        # 8. Initialize Global Hotkey Listener (Safe: Ctrl+F9/Ins/F11 for Visibility, Ctrl+F10/Home for Lock/Unlock)
+        # 7. Initialize Global Hotkey Listener (Safe: Ctrl+F9/Ins/F11 for Visibility, Ctrl+F10/Home for Lock/Unlock)
         self.hotkeys = GlobalHotkeyListener(
             on_toggle_visibility=self._handle_visibility_hotkey,
             on_toggle_lock=self._handle_lock_hotkey
@@ -136,16 +133,9 @@ class ConvoyPaceApp:
             self.root.after(0, lambda: self.control_panel.set_network_status(text, connected))
             self.root.after(0, lambda: self.overlay.set_network_connected(connected))
 
-    def _on_toggle_host_server(self, is_host: bool):
-        """Toggle in-process embedded relay server."""
-        if is_host:
-            self.embedded_server.start()
-        else:
-            self.embedded_server.stop()
-
     def _on_join_room(self, room_code: str, driver_name: str, server_url: Optional[str] = None):
         """User clicked Create or Join room."""
-        target_url = server_url or self.config.get("server_url", "http://localhost:8080")
+        target_url = server_url or self.config.get("server_url", "https://convoypace-relay-server.onrender.com")
         self.overlay.set_driver_name(driver_name)
         self.net_client.stop()
         self.net_client = NetworkClient(
@@ -184,10 +174,6 @@ class ConvoyPaceApp:
     def on_close(self):
         """Graceful shutdown when Control Panel is closed."""
         self._running = False
-        try:
-            self.embedded_server.stop()
-        except Exception:
-            pass
         try:
             self.hotkeys.stop()
         except Exception:

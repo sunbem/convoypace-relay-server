@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from client.config_manager import ConfigManager
 from client.steam_detector import detect_ets2_path, is_plugin_installed
 from client.plugin_installer import install_plugin, uninstall_plugin
-from client.embedded_server import get_local_ip
 from server.relay_server import generate_room_code
 
 
@@ -29,7 +28,6 @@ class ControlPanel:
         root: tk.Tk,
         config: ConfigManager,
         on_join_room: Optional[Callable[[str, str, str], None]] = None,
-        on_toggle_host_server: Optional[Callable[[bool], None]] = None,
         on_unit_changed: Optional[Callable[[str], None]] = None,
         on_simulation_toggled: Optional[Callable[[bool], None]] = None,
         on_toggle_overlay_visibility: Optional[Callable[[], None]] = None,
@@ -38,7 +36,6 @@ class ControlPanel:
         self.root = root
         self.config = config
         self.on_join_room = on_join_room
-        self.on_toggle_host_server = on_toggle_host_server
         self.on_unit_changed = on_unit_changed
         self.on_simulation_toggled = on_simulation_toggled
         self.on_toggle_overlay_visibility = on_toggle_overlay_visibility
@@ -115,25 +112,11 @@ class ControlPanel:
         f_server = tk.Frame(sec_room, bg=self.bg_color)
         f_server.pack(fill=tk.X, pady=(0, 6))
         tk.Label(f_server, text="Server URL:", font=("Segoe UI", 9), fg=self.text_color, bg=self.bg_color, width=12, anchor="w").pack(side=tk.LEFT)
-        self.var_server_url = tk.StringVar(value=self.config.get("server_url", "http://localhost:8080"))
+        self.var_server_url = tk.StringVar(value=self.config.get("server_url", "https://convoypace-relay-server.onrender.com"))
         ent_server = tk.Entry(f_server, textvariable=self.var_server_url, font=("Segoe UI", 9), bg="#21262d", fg="#fff", insertbackground="#fff", relief=tk.FLAT)
         ent_server.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3)
 
-        # Host Convoy Toggle (Starts Built-in Server)
-        self.var_host_mode = tk.BooleanVar(value=bool(self.config.get("host_mode", True)))
-        chk_host = tk.Checkbutton(
-            sec_room,
-            text="⚡ Host Convoy on this PC (Run Built-in Server)",
-            variable=self.var_host_mode,
-            command=self._on_host_mode_toggled,
-            font=("Segoe UI", 9, "bold"),
-            fg=self.green_color,
-            bg=self.bg_color,
-            selectcolor=self.card_bg
-        )
-        chk_host.pack(anchor="w", pady=(0, 6))
-
-        # Cloud server preset (Render) - disables local host mode and sets cloud URL
+        # Cloud server preset (Render) - sets cloud URL
         f_cloud = tk.Frame(sec_room, bg=self.bg_color)
         f_cloud.pack(fill=tk.X, pady=(0, 6))
         btn_cloud = tk.Button(
@@ -157,33 +140,6 @@ class ControlPanel:
             wraplength=300,
             justify=tk.LEFT
         ).pack(side=tk.LEFT, padx=(8, 0))
-
-        # Shareable Link Banner (shows LAN IP when hosting)
-        self.f_share = tk.Frame(sec_room, bg="#1c2128", padx=8, pady=6, highlightbackground="#30363d", highlightthickness=1)
-        self.f_share.pack(fill=tk.X, pady=(0, 8))
-
-        self.lbl_share_link = tk.Label(
-            self.f_share,
-            text="",
-            font=("Segoe UI", 8),
-            fg=self.accent_color,
-            bg="#1c2128",
-            anchor="w"
-        )
-        self.lbl_share_link.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        btn_copy_link = tk.Button(
-            self.f_share,
-            text="📋 Copy Link",
-            command=self._on_copy_share_link,
-            font=("Segoe UI", 8),
-            bg="#30363d",
-            fg="#c9d1d9",
-            relief=tk.FLAT,
-            padx=6,
-            cursor="hand2"
-        )
-        btn_copy_link.pack(side=tk.RIGHT)
 
         # Room Code + Buttons
         f_code = tk.Frame(sec_room, bg=self.bg_color)
@@ -233,8 +189,6 @@ class ControlPanel:
             cursor="hand2"
         )
         btn_web.pack(fill=tk.X, ipady=2)
-
-        self._update_share_banner()
 
         # --- Section 2: 1-Click Plugin Setup ---
         sec_plugin = tk.LabelFrame(
@@ -394,58 +348,21 @@ class ControlPanel:
         fg = self.green_color if connected else self.muted_color
         self.lbl_telemetry_status.config(text=f"● ETS2: {text}", fg=fg)
 
-    def _update_share_banner(self):
-        code = self.var_room_code.get().strip().upper()
-        if self.var_host_mode.get():
-            lan_ip = get_local_ip()
-            share_url = f"http://{lan_ip}:8080/room/{code}"
-            self.lbl_share_link.config(text=f"Share: {share_url}")
-            self.f_share.pack(fill=tk.X, pady=(0, 8))
-        else:
-            self.f_share.pack_forget()
-
-    def _on_copy_share_link(self):
-        code = self.var_room_code.get().strip().upper()
-        lan_ip = get_local_ip()
-        share_url = f"http://{lan_ip}:8080/room/{code}"
-        self.root.clipboard_clear()
-        self.root.clipboard_append(share_url)
-        messagebox.showinfo("Copied", f"Convoy link copied to clipboard:\n{share_url}\n\nSend this link to friends so they can view the live leaderboard or join with Room Code '{code}'!")
-
-    def _on_host_mode_toggled(self):
-        is_host = self.var_host_mode.get()
-        self.config.set("host_mode", is_host)
-        if is_host:
-            self.var_server_url.set("http://localhost:8080")
-            self.config.set("server_url", "http://localhost:8080")
-        self._update_share_banner()
-        if self.on_toggle_host_server:
-            self.on_toggle_host_server(is_host)
-        self._on_join_convoy()
-
     def _on_use_cloud_server(self):
         """Switch to the hosted (Render) relay server."""
         cloud_url = "https://convoypace-relay-server.onrender.com"
         self.var_server_url.set(cloud_url)
         self.config.set("server_url", cloud_url)
-        self.config.set("host_mode", False)
-        self.var_host_mode.set(False)
-        self._update_share_banner()
         if self.on_join_room:
             self.on_join_room(self.var_room_code.get().strip().upper(), self.var_driver_name.get().strip() or "Driver", cloud_url)
 
     def _on_create_convoy(self):
         new_code = generate_room_code()
         self.var_room_code.set(new_code)
-        if not self.var_host_mode.get():
-            self.var_host_mode.set(True)
-            self._on_host_mode_toggled()
-        else:
-            self._update_share_banner()
-            self._on_join_convoy()
+        self._on_join_convoy()
 
-        lan_ip = get_local_ip()
-        share_url = f"http://{lan_ip}:8080/room/{new_code}"
+        server_url = self.var_server_url.get().strip() or "https://convoypace-relay-server.onrender.com"
+        share_url = f"{server_url.rstrip('/')}/room/{new_code}"
         self.root.clipboard_clear()
         self.root.clipboard_append(share_url)
         messagebox.showinfo("Convoy Created", f"Room Code: {new_code}\nWeb HUD Link: {share_url}\n\nCopied link to clipboard! Share it with your friends.")
@@ -453,16 +370,15 @@ class ControlPanel:
     def _on_join_convoy(self):
         code = self.var_room_code.get().strip().upper()
         name = self.var_driver_name.get().strip() or "Driver"
-        server_url = self.var_server_url.get().strip() or "http://localhost:8080"
+        server_url = self.var_server_url.get().strip() or "https://convoypace-relay-server.onrender.com"
         self.config.set("last_room_code", code, auto_save=False)
         self.config.set("driver_name", name, auto_save=False)
         self.config.set("server_url", server_url, auto_save=True)
-        self._update_share_banner()
         if self.on_join_room:
             self.on_join_room(code, name, server_url)
 
     def _on_open_web_hud(self):
-        server_url = self.config.get("server_url", "http://localhost:8080")
+        server_url = self.config.get("server_url", "https://convoypace-relay-server.onrender.com")
         code = self.var_room_code.get().strip().upper()
         clean_url = server_url.rstrip("/")
         full_url = f"{clean_url}/room/{code}"
