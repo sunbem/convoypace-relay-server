@@ -1,0 +1,16 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller build artifacts
+build/
+*.spec.bak
+
+# User local configs
+config.json
+*.tmp
+
+# Node
+node_modules/
+

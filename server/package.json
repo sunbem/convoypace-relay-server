@@ -1,0 +1,13 @@
+{
+  "name": "convoypace-relay-server",
+  "version": "1.0.0",
+  "description": "Ultra-lightweight real-time relay server for ConvoyPace ETS2 tracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
+

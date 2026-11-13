@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: convoypace-relay-server
+    env: python
+    buildCommand: pip install -r server/requirements.txt
+    startCommand: python server/relay_server.py
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: PORT_HOST
+        value: 0.0.0.0
+    healthCheckPath: /health
+    autoDeploy: true
