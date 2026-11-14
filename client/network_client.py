@@ -151,22 +151,38 @@ class NetworkClient:
     async def _send_loop(self, ws: aiohttp.ClientWebSocketResponse):
         """Periodically broadcast latest telemetry and heartbeat pings."""
         last_ping = time.time()
-        leave_sent = False
+        had_telemetry = False   # True once telemetry has actually flowed on this connection
+        leave_sent = False      # True after a leave was sent for cleared telemetry
         while self._running and not ws.closed:
             with self._telemetry_lock:
                 telemetry_copy = self._latest_telemetry
 
             if telemetry_copy is not None:
                 try:
+                    if leave_sent:
+                        # Telemetry resumed after a leave (game restarted) -
+                        # re-join the room so the server re-registers this driver.
+                        await ws.send_str(json.dumps({
+                            "type": "join",
+                            "room_code": self.room_code,
+                            "driver_name": self.driver_name,
+                            "is_viewer": False
+                        }))
                     await ws.send_str(json.dumps({
                         "type": "telemetry",
                         "data": telemetry_copy
                     }))
-                    leave_sent = False  # Reset leave flag when telemetry resumes
+                    had_telemetry = True
+                    leave_sent = False
                 except Exception:
                     break
-            elif not leave_sent:
-                # Telemetry cleared (game quit) - send leave message
+            elif had_telemetry and not leave_sent:
+                # Telemetry cleared while connected (game quit) - leave the room.
+                # NOTE: a driver that connects WITHOUT telemetry (e.g. ETS2 not
+                # started yet, or telemetry cleared by a network reconnect) must
+                # stay in the room as JOINED - sending a premature leave would
+                # make the driver invisible to viewers while telemetry updates
+                # are silently ignored by the server.
                 try:
                     await ws.send_str(json.dumps({"type": "leave"}))
                     leave_sent = True

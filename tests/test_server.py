@@ -199,6 +199,49 @@ class TestServerLogic(unittest.IsolatedAsyncioTestCase):
             await ws1.close()
             await ws2.close()
 
+    async def test_no_premature_leave_before_telemetry(self):
+        """A driver that connects WITHOUT telemetry must stay visible to viewers.
+
+        Regression test: the client used to send a 'leave' message whenever its
+        telemetry cache was empty (e.g. right after connecting, or after a
+        network reconnect cleared the cache). The server then removed the driver
+        from the room and silently ignored later telemetry updates, making the
+        driver invisible on the web HUD while the driver's own overlay kept
+        showing stale data.
+        """
+        from client.network_client import NetworkClient
+
+        client = NetworkClient(
+            server_url=self.base_url,
+            room_code="NOTEL-1",
+            driver_name="NoTel"
+        )
+        client.start()
+        try:
+            # Let the client connect and run several 1s send-loop iterations
+            await asyncio.sleep(3.5)
+
+            async with ClientSession() as session:
+                ws = await session.ws_connect(self.ws_url)
+                await ws.send_str(json.dumps({
+                    "type": "join",
+                    "room_code": "NOTEL-1",
+                    "driver_name": "Spectator",
+                    "is_viewer": True
+                }))
+                joined = json.loads(await ws.receive_str())
+                self.assertEqual(joined["type"], "joined")
+                data = json.loads(await ws.receive_str())
+                self.assertEqual(data["type"], "leaderboard_update")
+                names = [d["driver_name"] for d in data["drivers"]]
+                self.assertIn(
+                    "NoTel", names,
+                    "Driver was removed from the room by a premature leave message"
+                )
+                await ws.close()
+        finally:
+            client.stop()
+
 
 if __name__ == "__main__":
     unittest.main()
