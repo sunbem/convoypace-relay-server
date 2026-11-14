@@ -1,0 +1,49 @@
+name: Build & Release
+
+# Builds ConvoyPace.exe and attaches it to a GitHub Release.
+# Trigger: push a version tag, e.g.  git tag v1.0.0 && git push origin v1.0.0
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build ConvoyPace.exe
+        run: pyinstaller ConvoyPace.spec --noconfirm
+
+      - name: Create GitHub Release with exe
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ConvoyPace ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: dist/ConvoyPace.exe
+          body: |
+            ## Download
+            **ConvoyPace.exe** — a portable single file. No installation, no Python required.
+
+            ## Friend Setup (2 minutes)
+            1. Download `ConvoyPace.exe` below.
+            2. If Windows SmartScreen shows a warning, click **More info → Run anyway**.
+            3. Run it, click **⚡ 1-Click Install Plugin** (auto-detects ETS2 via Steam), then restart ETS2.
+            4. Enter your driver name, type the **Room Code** your host shared, click **🚀 Join**.
+            5. Watch the live leaderboard on your in-game overlay, or open the **Web HUD** link on any phone/second monitor.
