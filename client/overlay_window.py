@@ -1,7 +1,7 @@
 """
-client/overlay_window.py - Modern, minimal, frameless in-game HUD overlay for ConvoyPace.
-Sleek dark card design with rank badges, two-line driver rows, status pills,
-live connection indicator, click-through mode, and drag-to-move.
+client/overlay_window.py - Compact, modern, frameless in-game HUD overlay for ConvoyPace.
+Minimal corner widget: slim header with live dot and single-line driver rows
+(rank · name · speed · remaining distance). Click-through mode and drag-to-move.
 """
 
 import sys
@@ -19,7 +19,7 @@ from client.config_manager import ConfigManager
 class OverlayWindow:
     """In-game HUD overlay window for Euro Truck Simulator 2."""
 
-    WIDTH = 360
+    WIDTH = 300
 
     def __init__(
         self,
@@ -36,7 +36,7 @@ class OverlayWindow:
 
         # ---- Modern dark palette ----
         self.bg_color = "#0d1117"          # deep background
-        self.card_bg = "#161b22"           # driver row card
+        self.card_bg = "#161b22"           # driver row background
         self.card_bg_local = "#1a2332"     # local driver row (accent tint)
         self.border_locked = "#21262d"
         self.border_unlocked = "#58a6ff"
@@ -97,19 +97,19 @@ class OverlayWindow:
             bg=self.bg_color,
             highlightbackground=border_col,
             highlightthickness=1,
-            padx=14,
-            pady=12
+            padx=10,
+            pady=7
         )
         self.container.pack(fill=tk.BOTH, expand=True)
 
         # ---- Header Row: Room code + live status ----
         self.header_frame = tk.Frame(self.container, bg=self.bg_color)
-        self.header_frame.pack(fill=tk.X, pady=(0, 2))
+        self.header_frame.pack(fill=tk.X, pady=(0, 4))
 
         self.lbl_title = tk.Label(
             self.header_frame,
             text="🚚 --",
-            font=("Segoe UI", 11, "bold"),
+            font=("Segoe UI", 9, "bold"),
             fg=self.accent_color,
             bg=self.bg_color
         )
@@ -117,27 +117,12 @@ class OverlayWindow:
 
         self.lbl_status = tk.Label(
             self.header_frame,
-            text="● CONNECTING",
-            font=("Segoe UI", 8, "bold"),
+            text="● …",
+            font=("Segoe UI", 7, "bold"),
             fg=self.muted_color,
             bg=self.bg_color
         )
         self.lbl_status.pack(side=tk.RIGHT)
-
-        # ---- Route subtitle ----
-        self.lbl_route = tk.Label(
-            self.container,
-            text="Connecting to relay…",
-            font=("Segoe UI", 9),
-            fg=self.muted_color,
-            bg=self.bg_color,
-            anchor="w"
-        )
-        self.lbl_route.pack(fill=tk.X, pady=(0, 8))
-
-        # ---- Divider ----
-        self.divider = tk.Frame(self.container, height=1, bg=self.border_locked)
-        self.divider.pack(fill=tk.X, pady=(0, 8))
 
         # ---- Dynamic rows container ----
         self.rows_frame = tk.Frame(self.container, bg=self.bg_color)
@@ -145,32 +130,6 @@ class OverlayWindow:
 
         # Initial placeholder
         self._render_empty("Waiting for convoy drivers…")
-
-        # ---- Footer divider ----
-        self.footer_divider = tk.Frame(self.container, height=1, bg=self.border_locked)
-        self.footer_divider.pack(fill=tk.X, pady=(8, 6))
-
-        # ---- Footer Row: lock status + hotkey hint ----
-        self.footer_frame = tk.Frame(self.container, bg=self.bg_color)
-        self.footer_frame.pack(fill=tk.X)
-
-        self.lbl_lock_status = tk.Label(
-            self.footer_frame,
-            text="🔒 Locked",
-            font=("Segoe UI", 8, "bold"),
-            fg=self.green_color if self.is_locked else self.orange_color,
-            bg=self.bg_color
-        )
-        self.lbl_lock_status.pack(side=tk.LEFT)
-
-        self.lbl_hotkeys = tk.Label(
-            self.footer_frame,
-            text="F9 Hide · F10 Lock",
-            font=("Segoe UI", 8),
-            fg=self.muted_color,
-            bg=self.bg_color
-        )
-        self.lbl_hotkeys.pack(side=tk.RIGHT)
 
     def _fit_window(self):
         """Resize the window to a fixed width and content-driven height."""
@@ -188,10 +147,10 @@ class OverlayWindow:
         lbl = tk.Label(
             self.rows_frame,
             text=text,
-            font=("Segoe UI", 9),
+            font=("Segoe UI", 8),
             fg=self.muted_color,
             bg=self.bg_color,
-            pady=12
+            pady=6
         )
         lbl.pack()
 
@@ -230,18 +189,13 @@ class OverlayWindow:
         self.is_locked = locked
         self.config.set("overlay_locked", locked)
 
-        if locked:
-            self.container.config(highlightbackground=self.border_locked)
-            self.lbl_hotkeys.config(text="F9 Hide · F10 Lock")
-            self.lbl_lock_status.config(text="🔒 Locked", fg=self.green_color)
-            set_click_through(self.root, True)
-        else:
-            self.container.config(highlightbackground=self.border_unlocked)
-            self.lbl_hotkeys.config(text="F9 Hide · F10 Unlock")
-            self.lbl_lock_status.config(text="🔓 Drag Mode", fg=self.orange_color)
-            set_click_through(self.root, False)
-
+        # Locked = subtle border; unlocked = accent border as a drag-mode hint
+        self.container.config(
+            highlightbackground=self.border_locked if locked else self.border_unlocked
+        )
+        set_click_through(self.root, locked)
         set_always_on_top(self.root, True)
+
         if self.on_lock_toggled:
             self.on_lock_toggled(locked)
 
@@ -277,9 +231,9 @@ class OverlayWindow:
             if self.leaderboard_data and self.leaderboard_data.get("drivers"):
                 self.update_leaderboard(self.leaderboard_data)
         else:
-            self.lbl_status.config(text="● OFFLINE", fg=self.red_color)
+            self.lbl_status.config(text="● OFF", fg=self.red_color)
             if not self.leaderboard_data or not self.leaderboard_data.get("drivers"):
-                self._render_empty("Relay server not connected.\nCheck Server URL in settings.")
+                self._render_empty("Not connected.\nCheck Server URL in settings.")
 
     # ------------------------------------------------------------------ #
     #  Leaderboard rendering
@@ -290,19 +244,6 @@ class OverlayWindow:
         self.leaderboard_data = data
         room_code = data.get("room_code", "--")
         self.lbl_title.config(text=f"🚚 {room_code}")
-
-        # Update route subtitle
-        route = data.get("route", {})
-        src = route.get("source", "")
-        dst = route.get("destination", "")
-        cargo = route.get("cargo", "")
-        if dst:
-            route_str = f"{src} → {dst}" if src else f"→ {dst}"
-            if cargo:
-                route_str += f"  ·  📦 {cargo}"
-        else:
-            route_str = "Free Roam"
-        self.lbl_route.config(text=route_str)
 
         # Clear existing rows
         for widget in self.rows_frame.winfo_children():
@@ -322,114 +263,75 @@ class OverlayWindow:
         self._fit_window()
 
     def _render_driver_row(self, d: Dict[str, Any], is_mi: bool):
-        """Render a single driver row: rank badge | name+meta | distance+delta."""
+        """Render a compact single-line driver row: rank | name | speed | distance."""
         rank = d.get("rank", 1)
         name = d.get("driver_name", "Driver")
         status = d.get("status", "DRIVING")
         speed = d.get("speed_mph", 0) if is_mi else d.get("speed_kmh", 0)
         dist = d.get("distance_mi", 0) if is_mi else d.get("distance_km", 0)
-        delta = d.get("delta_mi", 0) if is_mi else d.get("delta_km", 0)
-        eta = d.get("time_formatted", "--:--")
+        fin_rank = d.get("finished_rank")
         unit_suffix = "mi" if is_mi else "km"
         speed_suffix = "mph" if is_mi else "km/h"
 
         is_local = (name.lower() == self.local_driver_name.lower())
-        display_name = f"You ({name})" if is_local else name
 
-        # Row card background
+        # Row background (accent tint for the local driver)
         row_bg = self.card_bg_local if is_local else self.card_bg
-        row_frame = tk.Frame(self.rows_frame, bg=row_bg, padx=10, pady=7)
-        row_frame.pack(fill=tk.X, pady=2)
+        row = tk.Frame(self.rows_frame, bg=row_bg)
+        row.pack(fill=tk.X, pady=1)
 
-        # ---- Rank badge ----
-        if rank == 1:
-            rank_bg, rank_fg = self.gold_color, "#0d1117"
-        elif rank == 2:
-            rank_bg, rank_fg = self.silver_color, "#0d1117"
-        elif rank == 3:
-            rank_bg, rank_fg = self.bronze_color, "#0d1117"
-        else:
-            rank_bg, rank_fg = self.border_locked, self.muted_color
-
-        badge = tk.Frame(row_frame, bg=rank_bg, width=26, height=26)
-        badge.pack(side=tk.LEFT, padx=(0, 10))
-        badge.pack_propagate(False)
+        # ---- Rank (colored number) ----
+        rank_fg = {1: self.gold_color, 2: self.silver_color, 3: self.bronze_color}.get(
+            rank, self.muted_color
+        )
         tk.Label(
-            badge, text=str(rank),
-            font=("Segoe UI", 10, "bold"),
-            fg=rank_fg, bg=rank_bg
-        ).pack(expand=True)
+            row, text=str(rank),
+            font=("Segoe UI", 8, "bold"),
+            fg=rank_fg, bg=row_bg, width=2
+        ).pack(side=tk.LEFT)
 
-        # ---- Name + meta ----
-        info = tk.Frame(row_frame, bg=row_bg)
-        info.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        name_fg = self.accent_color if is_local else self.text_color
+        # ---- Name (truncated to keep the row single-line) ----
+        display_name = f"You ({name})" if is_local else name
+        if len(display_name) > 14:
+            display_name = display_name[:13] + "…"
         tk.Label(
-            info, text=display_name,
-            font=("Segoe UI", 10, "bold"),
-            fg=name_fg, bg=row_bg, anchor="w"
-        ).pack(anchor="w")
+            row, text=display_name,
+            font=("Segoe UI", 8, "bold" if is_local else "normal"),
+            fg=self.accent_color if is_local else self.text_color,
+            bg=row_bg
+        ).pack(side=tk.LEFT, padx=(3, 0))
 
-        # Meta line: speed + ETA, or status text
+        # ---- Distance (right-most, bold) ----
         if status == "FINISHED":
-            meta_text = "🏁 Finished"
-            meta_fg = self.green_color
-        elif status == "PAUSED":
-            meta_text = f"⏸ Paused · {eta}"
-            meta_fg = self.orange_color
-        elif dist <= 0:
-            meta_text = "Syncing…"
-            meta_fg = self.muted_color
-        else:
-            meta_text = f"{round(speed)} {speed_suffix} · ETA {eta}"
-            meta_fg = self.muted_color
-
-        tk.Label(
-            info, text=meta_text,
-            font=("Segoe UI", 8),
-            fg=meta_fg, bg=row_bg, anchor="w"
-        ).pack(anchor="w")
-
-        # ---- Distance + delta ----
-        dist_frame = tk.Frame(row_frame, bg=row_bg)
-        dist_frame.pack(side=tk.RIGHT)
-
-        if status == "FINISHED":
-            fin_rank = d.get("finished_rank")
-            dist_text = f"#{fin_rank}" if fin_rank else "🏁"
+            dist_text = f"🏁 #{fin_rank}" if fin_rank else "🏁"
             dist_fg = self.green_color
-            delta_text = "Done"
-            delta_fg = self.green_color
         elif dist <= 0:
             dist_text = "—"
             dist_fg = self.muted_color
-            delta_text = ""
-            delta_fg = self.muted_color
         else:
             dist_text = f"{round(dist)} {unit_suffix}"
             dist_fg = self.text_color
-            if delta > 0:
-                delta_text = f"+{round(delta)} {unit_suffix}"
-                delta_fg = self.orange_color
-            elif rank == 1:
-                delta_text = "Leader"
-                delta_fg = self.gold_color
-            else:
-                delta_text = ""
-                delta_fg = self.muted_color
-
         tk.Label(
-            dist_frame, text=dist_text,
-            font=("Segoe UI", 11, "bold"),
-            fg=dist_fg, bg=row_bg, anchor="e"
-        ).pack(anchor="e")
-        if delta_text:
+            row, text=dist_text,
+            font=("Segoe UI", 9, "bold"),
+            fg=dist_fg, bg=row_bg
+        ).pack(side=tk.RIGHT, padx=(0, 1))
+
+        # ---- Speed (right, muted) ----
+        if status == "FINISHED":
+            speed_text = ""
+        elif status == "PAUSED":
+            speed_text = "⏸"
+        elif dist <= 0:
+            speed_text = "…"
+        else:
+            speed_text = f"{round(speed)} {speed_suffix}"
+        if speed_text:
             tk.Label(
-                dist_frame, text=delta_text,
-                font=("Segoe UI", 8),
-                fg=delta_fg, bg=row_bg, anchor="e"
-            ).pack(anchor="e")
+                row, text=speed_text,
+                font=("Segoe UI", 7),
+                fg=self.muted_color, bg=row_bg
+            ).pack(side=tk.RIGHT, padx=(6, 5))
 
     # ------------------------------------------------------------------ #
     #  Dragging (screen-coordinate based, works from any child widget)

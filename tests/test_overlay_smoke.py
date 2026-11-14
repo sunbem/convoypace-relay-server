@@ -1,4 +1,4 @@
-"""Quick smoke test for the redesigned overlay UI."""
+"""Quick smoke test for the compact overlay UI."""
 import sys
 sys.path.insert(0, '.')
 from client.config_manager import ConfigManager
@@ -21,16 +21,20 @@ mock = {
 o.update_leaderboard(mock)
 o.root.update_idletasks()
 
+def ascii_safe(s):
+    return str(s).encode('ascii', 'replace').decode('ascii')
+
 print('GEOM:', o.root.geometry())
-print('TITLE:', o.lbl_title.cget('text').replace(chr(0x1F69A), 'TRUCK'))
-print('ROUTE:', o.lbl_route.cget('text'))
+print('TITLE:', ascii_safe(o.lbl_title.cget('text').replace(chr(0x1F69A), 'TRUCK')))
 print('ROWS:', len(o.rows_frame.winfo_children()))
 
 o.set_network_connected(True)
-print('STATUS:', o.lbl_status.cget('text'))
+print('STATUS:', ascii_safe(o.lbl_status.cget('text')))
 
 o.set_locked(True)
-print('LOCK:', o.lbl_lock_status.cget('text'))
+print('LOCKED:', o.is_locked)
+o.set_locked(False)
+print('UNLOCKED:', not o.is_locked)
 
 o.root.destroy()
-print('OK - overlay rendered without errors')
+print('OK - compact overlay rendered without errors')
