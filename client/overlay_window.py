@@ -273,6 +273,9 @@ class OverlayWindow:
         """Update overlay state when disconnected from relay server."""
         if connected:
             self.lbl_status.config(text="● LIVE", fg=self.green_color)
+            # Refresh leaderboard on reconnect to ensure current state
+            if self.leaderboard_data and self.leaderboard_data.get("drivers"):
+                self.update_leaderboard(self.leaderboard_data)
         else:
             self.lbl_status.config(text="● OFFLINE", fg=self.red_color)
             if not self.leaderboard_data or not self.leaderboard_data.get("drivers"):

@@ -89,6 +89,12 @@ class NetworkClient:
     def is_connected(self) -> bool:
         return self._is_connected
 
+    def clear_telemetry(self):
+        """Clear current telemetry and send leave message to server."""
+        self._latest_telemetry = None
+        # The leave message will be sent by the _send_loop when it sees None telemetry
+        # and the connection is still active
+
     def _notify_status(self, text: str, connected: bool):
         self._is_connected = connected
         if self.on_status_change:
@@ -145,6 +151,7 @@ class NetworkClient:
     async def _send_loop(self, ws: aiohttp.ClientWebSocketResponse):
         """Periodically broadcast latest telemetry and heartbeat pings."""
         last_ping = time.time()
+        leave_sent = False
         while self._running and not ws.closed:
             with self._telemetry_lock:
                 telemetry_copy = self._latest_telemetry
@@ -155,6 +162,14 @@ class NetworkClient:
                         "type": "telemetry",
                         "data": telemetry_copy
                     }))
+                    leave_sent = False  # Reset leave flag when telemetry resumes
+                except Exception:
+                    break
+            elif not leave_sent:
+                # Telemetry cleared (game quit) - send leave message
+                try:
+                    await ws.send_str(json.dumps({"type": "leave"}))
+                    leave_sent = True
                 except Exception:
                     break
 

@@ -132,6 +132,9 @@ class ConvoyPaceApp:
         if self._running:
             self.root.after(0, lambda: self.control_panel.set_network_status(text, connected))
             self.root.after(0, lambda: self.overlay.set_network_connected(connected))
+            if not connected:
+                # Game disconnected or network lost - clear telemetry so driver vanishes from leaderboard
+                self.net_client.clear_telemetry()
 
     def _on_join_room(self, room_code: str, driver_name: str, server_url: Optional[str] = None):
         """User clicked Create or Join room."""
