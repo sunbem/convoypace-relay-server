@@ -77,3 +77,5 @@
 - [x] Update in-game overlay (`client/overlay_window.py`) to render joined drivers immediately with "Syncing..." distance placeholder.
 - [x] Trigger an immediate telemetry tick upon room join in `client/main.py` for sub-100ms first telemetry push.
 - [x] Add automated unit test in `tests/test_server.py` verifying case-insensitive deduplication and instant `JOINED` status broadcast.
+- [x] Push all changes to GitHub repository (`origin/main`) and verify automatic live deployment to Render (`https://convoypace-relay-server.onrender.com`).
+- [x] Terminate stale background processes of previous `.exe` runs that were holding old WebSocket connections on Render.
