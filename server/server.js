@@ -98,6 +98,8 @@ class ConvoyRoom {
             let status = 'DRIVING';
             if (finished.includes(s)) {
                 status = 'FINISHED';
+            } else if (!s.telemetry || Object.keys(s.telemetry).length === 0) {
+                status = 'JOINED';
             } else if (t.paused) {
                 status = 'PAUSED';
             } else if (!t.on_job) {
@@ -195,15 +197,29 @@ wss.on('connection', (ws) => {
             const msg = JSON.parse(raw);
             if (msg.type === 'join') {
                 const code = (msg.room_code || 'DEFAULT').toUpperCase().trim();
+                const rawName = msg.driver_name || 'Driver';
+                const driverName = (typeof rawName === 'string' ? rawName.trim() : '') || 'Driver';
+                const isViewer = Boolean(msg.is_viewer);
+
                 if (!rooms.has(code)) {
                     rooms.set(code, new ConvoyRoom(code));
                 }
                 currentRoom = rooms.get(code);
+
+                // Deduplicate: remove any existing session with the same driver name (case-insensitive)
+                if (!isViewer) {
+                    for (const [id, s] of currentRoom.sessions.entries()) {
+                        if (!s.isViewer && s.driverName.toLowerCase() === driverName.toLowerCase()) {
+                            currentRoom.removeSession(id);
+                        }
+                    }
+                }
+
                 currentSession = {
                     id: Math.random().toString(36).substring(2, 10),
                     ws,
-                    driverName: msg.driver_name || 'Driver',
-                    isViewer: Boolean(msg.is_viewer),
+                    driverName: driverName,
+                    isViewer: isViewer,
                     lastSeen: Date.now(),
                     telemetry: {},
                     finishTime: null,

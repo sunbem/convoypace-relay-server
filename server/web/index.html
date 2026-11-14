@@ -412,8 +412,16 @@
                     deltaStr = `<span class="delta-tag">+${Math.round(d.delta_km)} km</span>`;
                 }
 
-                const distDisplay = d.status === 'FINISHED' ? '🏁 FINISHED' : `${Math.round(d.distance_km)} km ${deltaStr}`;
-                const speedDisplay = d.status === 'FINISHED' ? '0 km/h' : `${Math.round(d.speed_kmh)} km/h`;
+                let distDisplay = '0 km';
+                if (d.status === 'FINISHED') {
+                    distDisplay = '🏁 FINISHED';
+                } else if (d.status === 'JOINED' && (!d.distance_km || d.distance_km <= 0)) {
+                    distDisplay = '<span style="color:var(--text-muted);font-size:0.85rem;">Ready / Syncing...</span>';
+                } else {
+                    distDisplay = `${Math.round(d.distance_km)} km ${deltaStr}`;
+                }
+
+                const speedDisplay = (d.status === 'FINISHED' || d.status === 'JOINED') ? '0 km/h' : `${Math.round(d.speed_kmh)} km/h`;
                 const etaDisplay = d.time_formatted || '--:--';
 
                 html += `

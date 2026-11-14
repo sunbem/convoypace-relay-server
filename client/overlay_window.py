@@ -323,6 +323,16 @@ class OverlayWindow:
                     bg=self.bg_color
                 )
                 lbl_dist.pack(side=tk.LEFT, padx=(10, 0))
+            elif status == "JOINED" and dist <= 0:
+                lbl_dist = tk.Label(
+                    row_frame,
+                    text="Syncing...",
+                    font=("Segoe UI", 9, "italic"),
+                    fg=self.muted_color,
+                    bg=self.bg_color,
+                    anchor="w"
+                )
+                lbl_dist.pack(side=tk.LEFT, padx=(6, 0))
             else:
                 dist_str = f"{round(dist):>4} {unit_suffix}"
                 delta_str = f" (+{round(delta)} {unit_suffix})" if delta > 0 else f" ({eta})"

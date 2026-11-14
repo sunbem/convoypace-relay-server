@@ -19,6 +19,7 @@
 | **M7: Cloud Hosting & Overlay Fix** | Overlay black-window/click-through fix + Render deployment guide + UptimeRobot warm-ping strategy | ✅ Achieved | 100% |
 | **M8: Client Cloud Preset** | Add Cloud Server preset button in Control Panel + CONVOYPACE_SERVER_URL env override | ✅ Achieved | 100% |
 | **M9: Documentation & Verification** | Updated README.md with Render deploy guide, overlay troubleshooting, and progress tracking | ✅ Achieved | 100% |
+| **M10: Profile Deduplication & Instant Sync** | Enforce 1 driver profile per user (case-insensitive deduplication), instant JOINED driver broadcast to web HUD & overlay | ✅ Achieved | 100% |
 
 **Total Overall Progress:** `100%`
 
@@ -68,3 +69,11 @@
 - [x] Validate memory footprint (< 40MB RAM) and CPU overhead (< 0.2%)
 - [x] Write comprehensive `README.md` with quickstart guide, hotkey references, and troubleshooting instructions
 - [x] Final project review and delivery
+
+### Milestone 10: Profile Deduplication & Instant Joined Broadcast
+- [x] Enforce one driver profile per user on relay servers (`server/relay_server.py` and `server/server.js`) via case-insensitive deduplication by driver name on join.
+- [x] Introduce `JOINED` driver status on the relay server so drivers appear in the room immediately upon clicking Join, prior to receiving their first ETS2 telemetry packet.
+- [x] Update web HUD (`server/web/index.html`) to display joined drivers immediately with "Ready / Syncing..." state instead of leaving the board empty.
+- [x] Update in-game overlay (`client/overlay_window.py`) to render joined drivers immediately with "Syncing..." distance placeholder.
+- [x] Trigger an immediate telemetry tick upon room join in `client/main.py` for sub-100ms first telemetry push.
+- [x] Add automated unit test in `tests/test_server.py` verifying case-insensitive deduplication and instant `JOINED` status broadcast.

@@ -137,6 +137,8 @@ class ConvoyRoom:
             status = "DRIVING"
             if s in finished_drivers:
                 status = "FINISHED"
+            elif not t:
+                status = "JOINED"
             elif t.get("paused", False):
                 status = "PAUSED"
             elif not t.get("on_job", False):
@@ -276,7 +278,8 @@ class RelayServerApp:
 
                     if msg_type == "join":
                         room_code = data.get("room_code", "DEFAULT").strip().upper()
-                        driver_name = data.get("driver_name", "Driver").strip() or "Driver"
+                        raw_name = data.get("driver_name", "Driver")
+                        driver_name = (raw_name.strip() if isinstance(raw_name, str) else "") or "Driver"
                         is_viewer = bool(data.get("is_viewer", False))
 
                         # Leave previous room if any
@@ -286,12 +289,12 @@ class RelayServerApp:
 
                         current_room = self.get_or_create_room(room_code)
                         
-                        # Deduplicate: remove any existing session with the same driver name
-                        # This handles reconnects and duplicate joins from the same driver
+                        # Deduplicate: remove any existing session with the same driver name (case-insensitive)
+                        # This enforces exactly one driver profile per user and cleans up re-joins/stale sockets
                         if not is_viewer:
                             existing_sessions_to_remove = [
                                 s_id for s_id, s in current_room.sessions.items()
-                                if not s.is_viewer and s.driver_name == driver_name
+                                if not s.is_viewer and s.driver_name.strip().lower() == driver_name.lower()
                             ]
                             for s_id in existing_sessions_to_remove:
                                 current_room.remove_session(s_id)

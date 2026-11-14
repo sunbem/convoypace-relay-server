@@ -173,14 +173,19 @@ class TestServerLogic(unittest.IsolatedAsyncioTestCase):
             }))
             join1 = json.loads(await ws1.receive_str())
             self.assertEqual(join1["type"], "joined")
-            await ws1.receive_str()  # initial broadcast
+            # Immediate broadcast upon join must already contain Alex with status JOINED
+            raw_initial = await ws1.receive_str()
+            initial_data = json.loads(raw_initial)
+            self.assertEqual(len(initial_data["drivers"]), 1)
+            self.assertEqual(initial_data["drivers"][0]["driver_name"], "Alex")
+            self.assertEqual(initial_data["drivers"][0]["status"], "JOINED")
 
-            # Second connection: Alex reconnects (simulating a network blip)
+            # Second connection: alex (different casing) reconnects (simulating a network reconnect or duplicate join)
             ws2 = await session.ws_connect(self.ws_url)
             await ws2.send_str(json.dumps({
                 "type": "join",
                 "room_code": "DEDUP-1",
-                "driver_name": "Alex"
+                "driver_name": "alex"
             }))
             join2 = json.loads(await ws2.receive_str())
             self.assertEqual(join2["type"], "joined")
@@ -188,7 +193,7 @@ class TestServerLogic(unittest.IsolatedAsyncioTestCase):
             raw = await ws2.receive_str()
             data = json.loads(raw)
             self.assertEqual(data["type"], "leaderboard_update")
-            alex_entries = [d for d in data["drivers"] if d["driver_name"] == "Alex"]
+            alex_entries = [d for d in data["drivers"] if d["driver_name"].lower() == "alex"]
             self.assertEqual(len(alex_entries), 1, "Duplicate driver profile was created")
 
             await ws1.close()

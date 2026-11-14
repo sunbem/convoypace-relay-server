@@ -136,16 +136,19 @@ class ConvoyPaceApp:
     def _on_join_room(self, room_code: str, driver_name: str, server_url: Optional[str] = None):
         """User clicked Create or Join room."""
         target_url = server_url or self.config.get("server_url", "https://convoypace-relay-server.onrender.com")
-        self.overlay.set_driver_name(driver_name)
+        clean_name = driver_name.strip() or "Driver"
+        self.overlay.set_driver_name(clean_name)
         self.net_client.stop()
         self.net_client = NetworkClient(
             server_url=target_url,
             room_code=room_code,
-            driver_name=driver_name,
+            driver_name=clean_name,
             on_leaderboard_update=self._on_leaderboard_received,
             on_status_change=self._on_network_status_changed
         )
         self.net_client.start()
+        # Immediately read and push initial telemetry so the driver appears in the room instantly
+        self.root.after(100, self._telemetry_tick)
 
     def _on_unit_changed(self, unit: str):
         self.overlay.set_unit(unit)
